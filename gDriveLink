@@ -1,0 +1,108 @@
+#!/bin/bash
+
+#############################
+#     gDriveLink.sh V0.2    #
+# written by theFriedZombie #
+#           2014            #
+#############################
+
+usage() {
+cat 1>&2 << EOF
+
+usage: gDriveLink
+
+This script changes google drive share links
+to links that can be directly viewed or downloaded
+
+the new url will be returned to stdout
+
+USAGE:
+  ./gDriveLink [-d|-v|-s|-b] url(s)
+
+OPTIONS:
+  -h,--help       Show this message
+  -d,--download   print the download url(default)
+  -v,--view       print the view url
+  -s,--suffix     append the google drive file name to the url
+  -b,--both       Print both the default and the modified url
+                  seperated by a tab character
+
+EOF
+exit 1
+}
+
+TEMP=`getopt -o hdvsb --long help,download,view,suffix,both -n 'gDriveLink' -- "$@"`
+eCode=$?
+    if [ $eCode = 127 ]; then
+    echo "something went wrong, getopt is not installed" 1>&2
+    exit 2
+fi
+
+[ $eCode != 0 ] && usage
+eval set -- "$TEMP"
+
+action="download"
+print=0
+suffix=0
+
+while true; do
+    case "$1" in
+        -h | --help) usage; shift;;
+        -d | --download) action="download"; shift;;
+        -v | --view) action="view"; shift;;
+        -b | --both) print=1; shift;;
+        -s | --suffix) suffix=1; shift;;
+        *) break;;
+    esac
+done
+
+[ "$1" != "--" ] && usage
+[ -z "$2" ] && [ -t 0 ] && usage
+
+shift
+
+if [ $suffix = 1 ]; then
+    curl --version > /dev/null
+    if [ $? = 127 ]; then
+        echo "something went wrong, curl is not installed." 1>&2
+        exit 2
+    fi
+fi
+
+err=""
+
+getLink() {
+    local uid=`echo "$1" | grep -Po '(?<=file/d/).*?(?=/)'`
+    local url="https://drive.google.com/uc?export=$action&id=$uid"
+
+    if [ -z "$uid" ]; then
+        err=$'\n'"  $1"$'\t'"Doesn't seem to be a valid url"
+        continue
+    fi
+
+    if [ $suffix != 0 ]; then
+        suffix=`curl -L --silent --fail "$1" | grep -Pom1 'itemprop="name".*?>' | grep -Pom1 '(?<=content=").*?(?=")'`
+        if [ -z "$suffix" ]; then
+            err="$err"$'\n'" $1"$'\t'"failed to get filename"
+            continue
+        fi
+        url="${url}&d=/$suffix"
+    fi
+
+    [ $print = 1 ] && url="$url"$'\t'"$1"
+    echo "$url"
+}
+
+if [ -t 0 ]; then
+    for url in "$@"; do
+        getLink "${url}"
+    done
+else
+    while read url; do
+        getLink "${url}"
+    done
+fi
+if [ ! -z "$err" ]; then
+    echo "Some errors seem to have occured:$err" 1>&2
+    exit 1
+fi
