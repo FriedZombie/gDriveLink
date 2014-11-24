@@ -73,6 +73,7 @@ err=""
 
 getLink() {
     local uid=`echo "$1" | grep -Po '(?<=file/d/).*?(?=/)'`
+    [ -z "$uid" ] && uid=`echo "$1" | grep -Po '(?<=host/).*'`
     local url="https://drive.google.com/uc?export=$action&id=$uid"
 
     if [ -z "$uid" ]; then
