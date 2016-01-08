@@ -1,7 +1,7 @@
 gDriveLink
 ==========
 
-Simple script to change a goole drive link to a direct download or view link
+Simple script to change a google drive link to a direct download or view link
 
 Store the bash script gDriveLink to /usr/local/bin and 
 make it executable with chmod +x /usr/local/bin/gDriveLink
